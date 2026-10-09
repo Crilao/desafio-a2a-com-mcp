@@ -158,8 +158,8 @@ async function iniciar(tarefa, texto, traceparent) {
   };
 
   // Descoberta antes da primeira chamada, e a versao da politica lida do resource.
-  await descobrirFerramentas();
-  await lerVersaoDaPolitica();
+  await descobrirFerramentas(traceparent);
+  await lerVersaoDaPolitica(traceparent);
 
   definirStatus(tarefa, WORKING, 'Reservando...');
 

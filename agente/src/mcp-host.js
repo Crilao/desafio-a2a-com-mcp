@@ -47,30 +47,39 @@ async function conectar() {
   return cliente;
 }
 
-/** Descoberta em runtime. A lista de tools nao existe no codigo. */
-export async function descobrirFerramentas() {
+function metaComTrace(traceparent) {
+  return traceparent ? { traceparent } : {};
+}
+
+/**
+ * Descoberta em runtime. A lista de tools nao existe no codigo.
+ *
+ * Descoberta e leitura da politica acontecem uma vez por processo, entao sao
+ * os requests da primeira Task que as dispara: o trace-id dela viaja junto.
+ * As Tasks seguintes reusam o cache e so emitem o `tools/call`.
+ */
+export async function descobrirFerramentas(traceparent) {
   if (nomesDeFerramentas) return nomesDeFerramentas;
   const c = await conectar();
-  const lista = await c.listTools();
+  const lista = await c.listTools({ _meta: metaComTrace(traceparent) });
   nomesDeFerramentas = new Set(lista.tools.map((t) => t.name));
   return nomesDeFerramentas;
 }
 
 /** A versao da politica vem do resource, da primeira linha do markdown. */
-export async function lerVersaoDaPolitica() {
+export async function lerVersaoDaPolitica(traceparent) {
   if (versaoDaPolitica) return versaoDaPolitica;
   const c = await conectar();
-  const resposta = await c.readResource({ uri: 'politica://uso' });
+  const resposta = await c.readResource({
+    uri: 'politica://uso',
+    _meta: metaComTrace(traceparent),
+  });
   const texto = resposta.contents?.[0]?.text ?? '';
   const primeira = texto.split('\n', 1)[0];
   const valor = primeira.slice(primeira.indexOf(':') + 1).trim();
   if (!valor) throw new Error('a politica lida do resource nao declara a versao');
   versaoDaPolitica = valor;
   return versaoDaPolitica;
-}
-
-function metaComTrace(traceparent) {
-  return traceparent ? { traceparent } : {};
 }
 
 /**

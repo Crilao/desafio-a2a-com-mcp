@@ -261,7 +261,7 @@ Execução com os dois processos recém-iniciados, terminando com código de sa�
 **0**:
 
 ```
-trace-id desta execucao: 757e344ee4b514ef878d90342d4e03b9
+trace-id desta execucao: ac9890b040927e3e252d4e32fe2ebeeb
 procure esse valor no stderr do servidor MCP para conferir a propagacao do traceparent.
 
 PASS 01 tools/list traz as tres tools
@@ -307,27 +307,33 @@ resumo: 36 passaram, 0 falharam, de 36 verificacoes
 
 ### Evidências no stderr do servidor MCP
 
-Com a execução acima, o stderr do servidor MCP mostra, em ordem:
+Com a execução acima, o stderr do servidor MCP mostra, em ordem (as primeiras
+linhas são o próprio validador falando direto com o MCP, que não manda
+`traceparent`; as últimas são o agente):
 
 ```
-[mcp] method=tools/list id="ccc83b5a50ef" traceparent=-
-[mcp] method=tools/call id="97c305aee411" traceparent=-
+[mcp] method=tools/list id="be285a074e96" traceparent=-
+[mcp] method=tools/call id="03bf8fa92dff" traceparent=-
 ...
-[mcp] method=tools/call id="5f13f6ad3ea9" traceparent=00-757e344ee4b514ef878d90342d4e03b9-e4074b14e1bc870f-01
-...
-[mcp] method=tools/call id=2 traceparent=00-757e344ee4b514ef878d90342d4e03b9-e4074b14e1bc870f-01
-[mcp] method=tools/call id=3 traceparent=00-757e344ee4b514ef878d90342d4e03b9-e4074b14e1bc870f-01
+[mcp] method=tools/call id="be9701b31017" traceparent=00-ac9890b040927e3e252d4e32fe2ebeeb-d09c71bf01c05cd8-01
+[mcp] method=tools/list id=0 traceparent=00-ac9890b040927e3e252d4e32fe2ebeeb-d09c71bf01c05cd8-01
+[mcp] method=resources/read id=1 traceparent=00-ac9890b040927e3e252d4e32fe2ebeeb-d09c71bf01c05cd8-01
+[mcp] method=tools/call id=2 traceparent=00-ac9890b040927e3e252d4e32fe2ebeeb-d09c71bf01c05cd8-01
+[mcp] method=tools/call id=3 traceparent=00-ac9890b040927e3e252d4e32fe2ebeeb-d09c71bf01c05cd8-01
+[mcp] method=tools/call id=4 traceparent=00-ac9890b040927e3e252d4e32fe2ebeeb-d09c71bf01c05cd8-01
 ```
 
 Três coisas para conferir aí:
 
 1. O `tools/list` acontece **antes** do primeiro `tools/call` — é a descoberta em
    runtime, não uma lista fixa no código.
-2. O `trace-id` do validador (`757e344ee4b514ef878d90342d4e03b9`) aparece nos
-   requests que o **agente** emitiu, provando que o `traceparent` do header A2A
-   foi propagado até o servidor MCP dentro do `_meta`.
-3. Os dois últimos são o request inicial e o retry de uma reserva que passou pela
-   pausa: ids `2` e `3`, **diferentes**, como a spec exige.
+2. O `trace-id` do validador (`ac9890b040927e3e252d4e32fe2ebeeb`) aparece em
+   **todos** os requests que o **agente** emitiu para aquela Task — o
+   `tools/list`, o `resources/read` e os `tools/call` — provando que o
+   `traceparent` do header A2A foi propagado até o `_meta` de cada um deles. O
+   span-id muda por request; o trace-id não.
+3. Os `tools/call` `2` e `3` são o request inicial e o retry de uma reserva que
+   passou pela pausa: ids **diferentes**, como a spec exige.
 
 ---
 
